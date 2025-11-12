@@ -199,7 +199,8 @@ class Encoder(nn.Module):
         )
         self.norm = nn.LayerNorm(d_model)
         self.pad_idx = pad_idx
-
+        self.vocab_size = vocab_size
+        
     def forward(self, input_ids: torch.Tensor):
         x = self.pos_emb(self.token_emb(input_ids))
         mask = make_padding_mask(input_ids, pad_idx=self.pad_idx)  # (B, T)
