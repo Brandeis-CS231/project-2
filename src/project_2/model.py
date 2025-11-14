@@ -91,8 +91,38 @@ class PosEncoding(nn.Module):
         return x_new
 
 
+## Ref: https://machinelearningmastery.com/positional-encodings-in-transformer-models/
+class LearnablePosEncoding(nn.Module):
+    """Learnable positional encoding module"""
+
+    def __init__(self, d_model: int, seq_len: int):
+        """
+        Assume a single data instance is a list of tokens
+
+        Args:
+            d_model (int): the size of the input embeddings
+            seq_len (int): the length of input sequence
+
+        Returns: None
+        """
+        super().__init__()
+        self.position_embeddings = nn.Embedding(seq_len, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward function
+        Args:
+            x (torch.Tensor): word embeddings for input sequence with the shape (B, seq_len, d_model)
+
+        Returns: new embeddings that add positional embeddings
+        """
+        positions = torch.arange(x.size(1), device=x.device).expand(x.size(0), -1)
+        position_embeddings = self.position_embeddings(positions)
+        return x + position_embeddings
+
+
 class MHA(nn.Module):
     """Multihead attention"""
+
     def __init__(self, d_model: int, num_heads: int, dropout: float = 0.1):
         super().__init__()
         assert d_model % num_heads == 0
@@ -145,6 +175,7 @@ class MHA(nn.Module):
 
 class FFN(nn.Module):
     """Feedforward neural network"""
+
     def __init__(self, d_model: int, d_ff: int, dropout: float = 0.1):
         super().__init__()
         self.lin1 = nn.Linear(d_model, d_ff)
@@ -193,7 +224,7 @@ class Encoder(nn.Module):
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        self.pos_emb = LearnablePosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -249,12 +280,12 @@ class Decoder(nn.Module):
         d_ff: int,
         num_layers: int,
         max_len: int,
-        dropout: float =0.1,
-        pad_idx: int =0,
+        dropout: float = 0.1,
+        pad_idx: int = 0,
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        self.pos_emb = LearnablePosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -325,11 +356,7 @@ class EncoderDecoder(nn.Module):
         return logits
 
     def _greedy_decode(
-        self,
-        src_ids: torch.Tensor,
-        tgt_ids: torch.Tensor,
-        max_len: int,
-        eos_id: int
+        self, src_ids: torch.Tensor, tgt_ids: torch.Tensor, max_len: int, eos_id: int
     ) -> Sequence[int]:
         """
         Greedy decoding: at each step, select the token with highest probability.
@@ -354,7 +381,9 @@ class EncoderDecoder(nn.Module):
             next_token = torch.argmax(next_token_logits, dim=-1)  # (1,)
 
             # Append to target sequence
-            tgt_ids = torch.cat([tgt_ids, next_token.unsqueeze(0)], dim=1)  # (1, current_len + 1)
+            tgt_ids = torch.cat(
+                [tgt_ids, next_token.unsqueeze(0)], dim=1
+            )  # (1, current_len + 1)
 
             # Stop if EOS token is generated
             if next_token.item() == eos_id:
@@ -368,7 +397,7 @@ class EncoderDecoder(nn.Module):
         tgt_ids: torch.Tensor,
         beam_width: int,
         max_len: int,
-        eos_id: int
+        eos_id: int,
     ) -> Sequence[int]:
         """
         Beam search decoding: maintain top-k most probable sequences at each step.
@@ -401,7 +430,9 @@ class EncoderDecoder(nn.Module):
 
                 # Get log probabilities for next token
                 next_token_logits = logits[:, -1, :]  # (1, vocab_size)
-                log_probs = torch.log_softmax(next_token_logits, dim=-1)  # (1, vocab_size)
+                log_probs = torch.log_softmax(
+                    next_token_logits, dim=-1
+                )  # (1, vocab_size)
 
                 # Get top-k tokens
                 topk_log_probs, topk_indices = torch.topk(log_probs, beam_width, dim=-1)
@@ -446,7 +477,7 @@ class EncoderDecoder(nn.Module):
         eos_id: int,
         max_len: int = 100,
         strategy: str = "greedy",
-        beam_width: int = 5
+        beam_width: int = 5,
     ) -> Sequence[Sequence[int]]:
         """
         Generate sequences in batch using specified decoding strategy.
@@ -472,7 +503,7 @@ class EncoderDecoder(nn.Module):
         # Process each sample in the batch
         for i in range(batch_size):
             # Get single source sequence
-            single_src = src_ids[i:i+1]  # (1, src_len)
+            single_src = src_ids[i : i + 1]  # (1, src_len)
 
             # Initialize with BOS token
             tgt_ids = torch.LongTensor([[bos_id]]).to(device)  # (1, 1)
@@ -480,10 +511,7 @@ class EncoderDecoder(nn.Module):
             # Generate using specified strategy
             if strategy == "greedy":
                 generated_ids = self._greedy_decode(
-                    src_ids=single_src,
-                    tgt_ids=tgt_ids,
-                    max_len=max_len,
-                    eos_id=eos_id
+                    src_ids=single_src, tgt_ids=tgt_ids, max_len=max_len, eos_id=eos_id
                 )
             elif strategy == "beam_search":
                 generated_ids = self._beam_search(
@@ -491,10 +519,12 @@ class EncoderDecoder(nn.Module):
                     tgt_ids=tgt_ids,
                     beam_width=beam_width,
                     max_len=max_len,
-                    eos_id=eos_id
+                    eos_id=eos_id,
                 )
             else:
-                raise ValueError(f"Unknown strategy: {strategy}. Use 'greedy' or 'beam_search'.")
+                raise ValueError(
+                    f"Unknown strategy: {strategy}. Use 'greedy' or 'beam_search'."
+                )
 
             generated_sequences.append(generated_ids)
 
