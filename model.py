@@ -51,7 +51,7 @@ def make_decoder_self_mask(tgt_seq, pad_idx=0):
 
 
 class PosEncoding(nn.Module):
-    """Positional encoding module"""
+    """Positional encoding module using sinusoidal functions"""
 
     def __init__(self, d_model: int, seq_len: int):
         """
@@ -88,6 +88,51 @@ class PosEncoding(nn.Module):
         """
         seq_len = x.size(1)
         x_new = x + self.pe[:, :seq_len, :]
+        return x_new
+
+
+class LearnablePosEncoding(nn.Module):
+    """Learnable positional encoding module using trainable embeddings"""
+
+    def __init__(self, d_model: int, seq_len: int):
+        """
+        Initialize learnable positional embeddings.
+
+        Args:
+            d_model (int): the size of the input embeddings
+            seq_len (int): the maximum length of input sequence
+
+        Returns: None
+        """
+        super().__init__()
+        self.d_model = d_model
+        self.seq_len = seq_len
+
+        # Create learnable positional embeddings
+        # Each position has its own learnable vector of size d_model
+        self.pos_embedding = nn.Embedding(seq_len, d_model)
+
+        # Initialize with small random values
+        nn.init.normal_(self.pos_embedding.weight, mean=0, std=0.02)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward function
+        Args:
+            x (torch.Tensor): word embeddings for input sequence with the shape (B, seq_len, d_model)
+
+        Returns: new embeddings that add positional embeddings
+        """
+        batch_size, seq_len, d_model = x.size()
+
+        # Generate position indices: [0, 1, 2, ..., seq_len-1]
+        positions = torch.arange(seq_len, device=x.device).unsqueeze(0)  # (1, seq_len)
+
+        # Get positional embeddings for these positions
+        pos_emb = self.pos_embedding(positions)  # (1, seq_len, d_model)
+
+        # Add positional embeddings to input
+        x_new = x + pos_emb
+
         return x_new
 
 
@@ -190,10 +235,19 @@ class Encoder(nn.Module):
         max_len: int,
         pad_idx: int,
         dropout=0.1,
+        pos_encoding_type: str = "sinusoidal",
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+
+        # Choose positional encoding type
+        if pos_encoding_type == "sinusoidal":
+            self.pos_emb = PosEncoding(d_model, max_len)
+        elif pos_encoding_type == "learnable":
+            self.pos_emb = LearnablePosEncoding(d_model, max_len)
+        else:
+            raise ValueError(f"Unknown pos_encoding_type: {pos_encoding_type}. Use 'sinusoidal' or 'learnable'.")
+
         self.layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -251,10 +305,19 @@ class Decoder(nn.Module):
         max_len: int,
         dropout: float =0.1,
         pad_idx: int =0,
+        pos_encoding_type: str = "sinusoidal",
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+
+        # Choose positional encoding type
+        if pos_encoding_type == "sinusoidal":
+            self.pos_emb = PosEncoding(d_model, max_len)
+        elif pos_encoding_type == "learnable":
+            self.pos_emb = LearnablePosEncoding(d_model, max_len)
+        else:
+            raise ValueError(f"Unknown pos_encoding_type: {pos_encoding_type}. Use 'sinusoidal' or 'learnable'.")
+
         self.layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -294,6 +357,7 @@ class EncoderDecoder(nn.Module):
         max_len: int = 50,
         dropout: float = 0.1,
         pad_idx: int = 0,
+        pos_encoding_type: str = "sinusoidal",
     ):
         super().__init__()
         self.encoder = Encoder(
@@ -305,6 +369,7 @@ class EncoderDecoder(nn.Module):
             max_len=max_len,
             dropout=dropout,
             pad_idx=pad_idx,
+            pos_encoding_type=pos_encoding_type,
         )
         self.decoder = Decoder(
             vocab_size=tgt_vocab_size,
@@ -315,6 +380,7 @@ class EncoderDecoder(nn.Module):
             max_len=max_len,
             dropout=dropout,
             pad_idx=pad_idx,
+            pos_encoding_type=pos_encoding_type,
         )
         self.out_proj = nn.Linear(d_model, tgt_vocab_size)
 
