@@ -9,7 +9,6 @@ import torch
 from torch.utils.data import Dataset
 
 from tokenizer import Pair, Tokenizer
-from tokenizer import BOS, EOS, PAD, UNK
 
 
 @dataclass
@@ -39,22 +38,26 @@ class SeqPairDataset(Dataset):
             src = tokenizer.encode(tokenizer.tokenize(item['src']))
             # trim/pad and add special tokens
             src = self._pad(
-                self._add_specials_and_trim(src, max_src_len),
-                max_src_len
+                self._add_specials_and_trim(
+                    src, max_src_len, tokenizer.bos_id, tokenizer.eos_id),
+                max_src_len,
+                tokenizer.pad_id
             )
 
             # tokenize and encode target
             tgt = tokenizer.encode(tokenizer.tokenize(item['tgt']))
             # trim/pad and add special tokens
             tgt = self._pad(
-                self._add_specials_and_trim(tgt, max_tgt_len),
-                max_tgt_len
+                self._add_specials_and_trim(
+                    tgt, max_tgt_len, tokenizer.bos_id, tokenizer.eos_id),
+                max_tgt_len,
+                tokenizer.pad_id
             )
 
             # processed pair
-            pair = Pair(src=src, tgt=tgt)
+            # pair = Pair(src=' '.join(src), tgt=' '.join(tgt))
             # could remove this if taking too much mem and not needed
-            self.pairs.append(pair)
+            # self.pairs.append(pair)
 
             # create training sample
             training_sample = Sample(
@@ -75,13 +78,13 @@ class SeqPairDataset(Dataset):
                 self.samples[idx].dec_inp_ids,
                 self.samples[idx].label_ids)
 
-    def _add_specials_and_trim(self, token_ids: list[int], max_len: int) -> list[int]:
+    def _add_specials_and_trim(self, token_ids: list[int], max_len: int, bos_id: int, eos_id: int) -> list[int]:
         if len(token_ids) > max_len - 2:
             # truncate if too long
             token_ids = token_ids[:max_len - 2]
-        return [BOS] + token_ids + [EOS]
+        return [bos_id] + token_ids + [eos_id]
 
-    def _pad(self, token_ids: list[int], max_len: int) -> list[int]:
+    def _pad(self, token_ids: list[int], max_len: int, pad_id: int) -> list[int]:
         # pad if too short
-        padding = [PAD] * (max_len - len(token_ids))
+        padding = [pad_id] * (max_len - len(token_ids))
         return token_ids + padding
