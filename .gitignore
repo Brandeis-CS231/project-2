@@ -16,3 +16,5 @@ wheels/
 # Remote deployment
 sftp-config.json
 
+#data
+data/

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -392,9 +392,6 @@ requires-dist = [
     { name = "torch", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'", specifier = "~=2.6.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-
-[package.metadata.requires-dev]
-dev = []
 
 [[package]]
 name = "regex"
