@@ -91,6 +91,36 @@ class PosEncoding(nn.Module):
         return x_new
 
 
+class LearnblePosEncoding(nn.Module):
+    def __init__(self, d_model, max_len):
+        super().__init__()
+
+        # embedding layer holding position vectors
+        self.pos_embedding = nn.Embedding(max_len, d_model)
+
+    def forward(self, x):
+        """
+        Args:
+            x: input tensor of token embeddings of shape 
+            (batch, seq_len, d_model)
+        """
+
+        seq_len = x.size(1)
+        device = x.device
+
+        # create position indices
+        positions = torch.arange(
+            seq_len, 
+            dtype=torch.long, 
+            device=device
+        )
+
+        # look up learned position vectors
+        pos_embed = self.pos_embedding(positions)
+
+        # add positional embedding to the input token embeddings
+        return x + pos_embed
+
 class MHA(nn.Module):
     """Multihead attention"""
     def __init__(self, d_model: int, num_heads: int, dropout: float = 0.1):
@@ -193,7 +223,11 @@ class Encoder(nn.Module):
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        
+        # self.pos_emb = PosEncoding(d_model, max_len)
+        ##### UNCOMMENT BELOW LINE to use Learnable Position Encoding ####        
+        self.pos_emb = LearnblePosEncoding(d_model, max_len)
+        
         self.layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -254,7 +288,11 @@ class Decoder(nn.Module):
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        
+        # self.pos_emb = PosEncoding(d_model, max_len)
+        ##### UNCOMMENT BELOW LINE to use Learnable Position Encoding ####        
+        self.pos_emb = LearnblePosEncoding(d_model, max_len)
+        
         self.layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -343,6 +381,17 @@ class EncoderDecoder(nn.Module):
         Returns:
             List of generated token ids
         """
+        ### index out of bounds error fix
+        # 1. Get the device from the source ID tensor (which should be on the model's device)
+        device = src_ids.device
+        
+        # 2. **CRITICAL FIX:** Move the initial target tensor to the correct device.
+        tgt_ids = tgt_ids.to(device) # <--- ADD THIS LINE
+        
+        # You may also need this if src_ids somehow moved off device
+        src_ids = src_ids.to(device)
+
+
         for _ in range(max_len):
             # Forward pass through model
             logits = self(src_ids, tgt_ids)  # (1, current_len, vocab_size)
@@ -352,6 +401,7 @@ class EncoderDecoder(nn.Module):
 
             # Greedy: select token with highest probability
             next_token = torch.argmax(next_token_logits, dim=-1)  # (1,)
+
 
             # Append to target sequence
             tgt_ids = torch.cat([tgt_ids, next_token.unsqueeze(0)], dim=1)  # (1, current_len + 1)
@@ -466,6 +516,9 @@ class EncoderDecoder(nn.Module):
         device = next(self.parameters()).device
         src_ids = src_ids.to(device)
         batch_size = src_ids.size(0)
+
+        ### index error fix
+        
 
         generated_sequences = []
 

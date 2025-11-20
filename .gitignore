@@ -18,3 +18,10 @@ sftp-config.json
 
 # Data
 /data
+/results
+Loss_architecture.png
+Loss_Pos_enc.png
+checkpoint.pt
+Code_Generated_Image.png:Zone.Identifier
+report_tmp.html
+report.pdf:Zone.Identifier
