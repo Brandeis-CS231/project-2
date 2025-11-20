@@ -393,9 +393,6 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
 
-[package.metadata.requires-dev]
-dev = []
-
 [[package]]
 name = "regex"
 version = "2025.10.23"
