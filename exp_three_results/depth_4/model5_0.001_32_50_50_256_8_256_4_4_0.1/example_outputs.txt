@@ -1,0 +1,128 @@
+Input: at least if be otherwise , there be not want other motif much more influential with him .
+Reference: or at least if this were otherwise , there were not wanting other motives much more influential with him .
+Prediction: at least if to be otherwise , there is not wanting any other motives much more to surrender with him .
+--------------------------------------------------
+Input: king .
+Reference: king .
+Prediction: king .
+--------------------------------------------------
+Input: they shall go hindmost with their standard .
+Reference: they shall go hindmost with their standards .
+Prediction: they shall go to the hindmost with their standard .
+--------------------------------------------------
+Input: 4 : 8 for gird you with sackcloth , lament howl : for fierce anger of lord be not turn back from u .
+Reference: 4 : 8 for this gird you with sackcloth , lament and howl : for the fierce anger of the lord is not turned back from us .
+Prediction: 4 : 8 for gird you with sackcloth , and lament and howl : for fierce anger of the lord is not turned back from us .
+--------------------------------------------------
+Input: " no , indeed , i understand by them two very different thing .
+Reference: " no , indeed , i understand by them two very different things .
+Prediction: " no , indeed , i understand by them two very different things .
+--------------------------------------------------
+Input: old married man -- quite good for nothing .
+Reference: an old married man -- quite good for nothing .
+Prediction: old married man -- quite good for nothing .
+--------------------------------------------------
+Input: length breadth height of it be equal .
+Reference: the length and the breadth and the height of it are equal .
+Prediction: length the breadth height of it was equal .
+--------------------------------------------------
+Input: 14 : 35 if they will learn thing , let them ask their husband at home : for it be shame for woman speak in church .
+Reference: 14 : 35 and if they will learn any thing , let them ask their husbands at home : for it is a shame for women to speak in the church .
+Prediction: 14 : 35 if they will learn any thing , let them ask their husband at home : for it is a shame for women to speak in the church .
+--------------------------------------------------
+Input: 9 : 13 for people turneth not unto him that smiteth them , do they seek lord of host .
+Reference: 9 : 13 for the people turneth not unto him that smiteth them , neither do they seek the lord of hosts .
+Prediction: 9 : 13 for the people turneth not unto him that smiteth them , did they seek the lord of hosts .
+--------------------------------------------------
+Input: he have find thing which modern people call impressionism , which be name for final scepticism which can find floor universe .
+Reference: he had found the thing which the modern people call impressionism , which is another name for that final scepticism which can find no floor to the universe .
+Prediction: he has found any thing which modern people called a impressionism , which is named for a final scepticism which can find a floor universe .
+--------------------------------------------------
+Input: 29 : 8 young men saw me , hide themselves : age arose , stand up .
+Reference: 29 : 8 the young men saw me , and hid themselves : and the aged arose , and stood up .
+Prediction: 29 : 8 and the young men saw me , and hid themselves : and age arose , and stood up .
+--------------------------------------------------
+Input: piedro saw that his father be in passion , know that he be beaten because he be find out be rogue , rather than for be one .
+Reference: piedro saw that his father was in a passion , and knew that he was beaten because he was found out to be a rogue , rather than for being one .
+Prediction: piedro saw that his father was in a passion , and knew that he was beaten because he was found out to be rogues , rather than for being one .
+--------------------------------------------------
+Input: " i have ," return elinor , colour likewise , harden her heart anew against compassion for him , " i have hear it .
+Reference: " i have ," returned elinor , colouring likewise , and hardening her heart anew against any compassion for him , " i have heard it all .
+Prediction: " i have ," returned elinor , colouring likewise , hardened her heart anew against compassion for him , " i have heard it .
+--------------------------------------------------
+Input: 40 : 24 he taketh it with his eye : his nose through snare .
+Reference: 40 : 24 he taketh it with his eyes : his nose through snares .
+Prediction: 40 : 24 he taketh it with his eyes : his nose through the snares .
+--------------------------------------------------
+Input: you rascal !
+Reference: you rascal !
+Prediction: you rascal !
+--------------------------------------------------
+Input: miss steele be least discomposed of three , by their presence ; it be in their power reconcile her it entirely .
+Reference: miss steele was the least discomposed of the three , by their presence ; and it was in their power to reconcile her to it entirely .
+Prediction: miss steele was the least to the three , and by their presence ; it was in their power reconciled her it entirely .
+--------------------------------------------------
+Input: turnbull macian look at other , say more than they could ever say with tongue sword .
+Reference: turnbull and macian looked at each other , and said more than they could ever say with tongues or swords .
+Prediction: turnbull macian looked at the other , and said more than they could ever say with a tongue sword .
+--------------------------------------------------
+Input: 3 : 1 i , brother , could not speak unto you a unto spiritual , a unto carnal , even a unto babe in christ .
+Reference: 3 : 1 and i , brethren , could not speak unto you as unto spiritual , but as unto carnal , even as unto babes in christ .
+Prediction: 3 : 1 i , brethren , could not speak unto you as unto spiritual , as unto carnal , even as unto babes in christ .
+--------------------------------------------------
+Input: be quite female case , it would be highly absurd in him , who could be of use at home , shut himself up .
+Reference: this was quite a female case , and it would be highly absurd in him , who could be of no use at home , to shut himself up .
+Prediction: this was quite a female case , it would be highly absurd in him , who could be of used at home , and shut himself up .
+--------------------------------------------------
+Input: it have be very happy fortnight , forlorn must be sinking from it into common course of hartfield day .
+Reference: it had been a very happy fortnight , and forlorn must be the sinking from it into the common course of hartfield days .
+Prediction: it had been very happy fortnight , and forlorn must be sinking from it into common course of hartfield to day .
+--------------------------------------------------
+Input: in fact , felix have till now profess himself his firm ally , have on his part receive from franklin unequivocal proof of friendship ; for it must be tell that other morning , when it be felix ' s turn get breakfast , felix never be up
+Reference: in fact , felix had till now professed himself his firm ally , and had on his part received from franklin unequivocal proofs of friendship ; for it must be told that every other morning , when it was felix ' s turn to get breakfast , felix
+Prediction: in fact , felix had till now professed himself to his firm , had on his part received from franklin to the proof of friendship ; for it must be told that other morning , when it was felix ' s turn to get breakfast , never was
+--------------------------------------------------
+Input: 4 : 10 philistine fought , israel be smite , they flee man into his tent : there be very great slaughter ; for there fell of israel thirty thousand footman .
+Reference: 4 : 10 and the philistines fought , and israel was smitten , and they fled every man into his tent : and there was a very great slaughter ; for there fell of israel thirty thousand footmen .
+Prediction: 4 : 10 and the philistine fought , and all israel were smitten , and they fled a man into his tent : and there was very great slaughter ; for there fell of israel thirty thousand footmen .
+--------------------------------------------------
+Input: 2 : 14 space in which we come from kadeshbarnea , until we be come over brook zered , be thirty eight year ; until all generation of men of war be waste out from among host , a lord sware unto them .
+Reference: 2 : 14 and the space in which we came from kadeshbarnea , until we were come over the brook zered , was thirty and eight years ; until all the generation of the men of war were wasted out from among the host , as the lord
+Prediction: 2 : 14 and space in which we came from kadeshbarnea , until we were come over the brooks zered , and were thirty and eight years ; until all the generations of the men of war were wasted out from among the host , as the lord
+--------------------------------------------------
+Input: " lose in desert wild be your little child .
+Reference: " lost in desert wild is your little child .
+Prediction: " losing in a desert wild is your little child .
+--------------------------------------------------
+Input: 30 : 12 wherefore thus saith holy one of israel , because ye despise word , trust in oppression perverseness , stay thereon : 30 : 13 therefore iniquity shall be you a breach ready fall , swell out in high wall , whose break cometh suddenly at
+Reference: 30 : 12 wherefore thus saith the holy one of israel , because ye despise this word , and trust in oppression and perverseness , and stay thereon : 30 : 13 therefore this iniquity shall be to you as a breach ready to fall , swelling out
+Prediction: 30 : 12 wherefore thus saith the holy one of israel , because ye despised the word , and trust in oppression , and stay thereon : 30 : 13 therefore the iniquity shall be you as a breach ready to fall , and swell out in high
+--------------------------------------------------
+Input: mal .
+Reference: mal .
+Prediction: mal .
+--------------------------------------------------
+Input: she be ponder , in meanwhile , upon possibility , without seem very rude , of make her escape from jane fairfax ' s letter , have almost resolve on hurry away directly under slight excuse , when miss bates turn her again seize her attention .
+Reference: she was pondering , in the meanwhile , upon the possibility , without seeming very rude , of making her escape from jane fairfax ' s letter , and had almost resolved on hurrying away directly under some slight excuse , when miss bates turned to her again
+Prediction: she was pondered , in meanwhile , upon the possibility , without seeming very rude , of making her escape from jane fairfax ' s letter , had almost resolved on a hurry away directly under the slightest excuse excuse , when miss bates turned again to summon
+--------------------------------------------------
+Input: i be quite ready .
+Reference: i am quite ready .
+Prediction: i am quite ready .
+--------------------------------------------------
+Input: be , perhaps , one of happy day of your life ."
+Reference: this is , perhaps , one of the happiest days of your life ."
+Prediction: be , perhaps , one of the happiest day of your life ."
+--------------------------------------------------
+Input: 18 : 9 king of israel jehoshaphat king of judah sit of them on his throne , clothe in their robe , they sit in void place at enter in of gate of samaria ; all prophet prophesy before them .
+Reference: 18 : 9 and the king of israel and jehoshaphat king of judah sat either of them on his throne , clothed in their robes , and they sat in a void place at the entering in of the gate of samaria ; and all the prophets prophesied
+Prediction: 18 : 9 and the king of israel jehoshaphat king of judah sat of them on his throne , clothed in their robes , and they sat in a void place at entering in of the gate of samaria ; and all the prophets prophesied before them .
+--------------------------------------------------
+Input: selah .
+Reference: selah .
+Prediction: selah .
+--------------------------------------------------
+Input: 22 : 27 last of all woman die also .
+Reference: 22 : 27 and last of all the woman died also .
+Prediction: 22 : 27 and the last of all the women died also .
+--------------------------------------------------

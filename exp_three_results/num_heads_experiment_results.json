@@ -1,0 +1,30 @@
+[
+    {
+        "num_heads": 2,
+        "test_loss": 0.6753758221090614,
+        "bleu_score": 0.8462584394656688
+    },
+    {
+        "num_heads": 4,
+        "test_loss": 0.6508579819233387,
+        "bleu_score": 0.8560008773661536
+    },
+    {
+        "num_heads": 8,
+        "test_loss": 0.6376906488235895,
+        "bleu_score": 0.8571039533443957
+    },
+    {
+        "epochs": 5,
+        "lr": 0.001,
+        "batch_size": 32,
+        "max_src_len": 50,
+        "max_tgt_len": 50,
+        "d_model": 256,
+        "num_heads": 8,
+        "d_ff": 256,
+        "num_enc_layers": 4,
+        "num_dec_layers": 4,
+        "dropout": 0.1
+    }
+]
