@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import time
 from typing import Callable
@@ -16,6 +17,23 @@ from dataset import SeqPairDataset
 from model import EncoderDecoder
 
 SPECIAL_TOKENS = [BOS, EOS, PAD, UNK]
+
+BEST_MODEL_PATH = "results/model5_0.001_32_50_50_256_8_256_4_4_0.1/model.pt"
+BEST_MODEL_PARAMS = {
+    "epochs": 5,
+    "lr": 0.001,
+    "batch_size": 32,
+    "max_src_len": 50,
+    "max_tgt_len": 50,
+    "d_model": 256,
+    "num_heads": 8,
+    "d_ff": 256,
+    "num_enc_layers": 4,
+    "num_dec_layers": 4,
+    "dropout": 0.1
+}
+
+# uv run main.py data/train.json data/dev.json data/test.json --bleu
 
 
 def train_epoch(
@@ -82,7 +100,8 @@ def compute_bleu(
     tokenizer: Tokenizer,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
     strategy: str = "greedy",
-    beam_width: int = 5
+    beam_width: int = 5,
+    save_dir: str | None = None
 ):
 
     model.eval()
@@ -111,6 +130,7 @@ def compute_bleu(
             )
 
             for i in range(label_ids.size(0)):
+                start = time.time()
                 pred_tokens = tokenizer.decode(model_outputs[i])
                 filtered_pred_tokens = [
                     token for token in pred_tokens if token not in SPECIAL_TOKENS]
@@ -118,17 +138,32 @@ def compute_bleu(
                 label_tokens = tokenizer.decode(label_ids[i].tolist())
                 filtered_label_tokens = [
                     token for token in label_tokens if token not in SPECIAL_TOKENS]
+                # TODO: this might be causing issues - need to test why BLEU is low and was getting errors before
                 if len(filtered_label_tokens) == 0:
                     continue  # skip empty references
                 bleu_score = sentence_bleu(
-                    filtered_label_tokens,
+                    [filtered_label_tokens],
                     filtered_pred_tokens,
                     weights=(1.0, 0.0),
                     smoothing_function=smoothing_fn
                 )
+                end = time.time()
+                if save_dir:
+                    with open(Path(f"{save_dir}/bleu_details.txt"), 'a') as f:
+                        print(f"Input: {' '.join(tokenizer.decode(enc_inp_ids[i].tolist()))}", file=f)
+                        print(f"Reference: {' '.join(filtered_label_tokens)}", file=f)
+                        print(f"Prediction: {' '.join(filtered_pred_tokens)}", file=f)
+                        print(f"BLEU Score: {bleu_score:.4f}", file=f)
+                        print(f"Decoding Strategy: {strategy} (Beam Width: {beam_width})", file=f)
+                        print(f"Sequence Length: {len(filtered_label_tokens)}", file=f)
+                        print(f"Time Taken: {end - start:.4f} seconds", file=f)
+                        print("-" * 50, file=f)
 
                 total_bleu += bleu_score
                 num_samples += 1
+
+    if num_samples == 0:
+        return 0.0
 
     return total_bleu / num_samples
 
@@ -138,6 +173,10 @@ def compute_bleu(
 @click.argument('dev_file', type=click.Path(exists=True))
 @click.argument('test_file', type=click.Path(exists=True))
 @click.option('--search_grid', is_flag=True, help='Perform grid search over hyperparameters')
+@click.option('--exp_one', is_flag=True, help='Run experiment one: Sinusoidal vs Learnable Positional Encodings')
+@click.option('--exp_two', is_flag=True, help='Run experiment two: Different Decoding Strategies (Greedy vs Beam Search)')
+@click.option('--exp_three', is_flag=True, help='Run experiment three: Model Architecture Variants')
+@click.option('--all_experiments', is_flag=True, help='Run all experiments sequentially')
 @click.option('--saved_model', type=click.Path(exists=True), default=None)
 @click.option('--bleu', is_flag=True, help='Compute BLEU score on test set after training/evaluation')
 def main(
@@ -146,7 +185,11 @@ def main(
     test_file: str,
     saved_model: str | None = None,
     bleu: bool = False,
-    search_grid: bool = False
+    search_grid: bool = False,
+    exp_one: bool = False,
+    exp_two: bool = False,
+    exp_three: bool = False,
+    all_experiments: bool = False
 ):
     start_time = time.time()
     torch.manual_seed(42)
@@ -155,6 +198,28 @@ def main(
         grid_search(train_file, dev_file, test_file)
         end_time = time.time()
         print(f"Grid search completed in {end_time - start_time:.2f} seconds")
+        return
+    if exp_one:
+        experiment_one(train_file, dev_file, test_file)
+        end_time = time.time()
+        print(f"Experiment one completed in {end_time - start_time:.2f} seconds")
+        return
+    if exp_two:
+        experiment_two(train_file, dev_file, test_file)
+        end_time = time.time()
+        print(f"Experiment two completed in {end_time - start_time:.2f} seconds")
+        return
+    if exp_three:
+        experiment_three(train_file, dev_file, test_file)
+        end_time = time.time()
+        print(f"Experiment three completed in {end_time - start_time:.2f} seconds")
+        return
+    if all_experiments:
+        experiment_one(train_file, dev_file, test_file)
+        experiment_two(train_file, dev_file, test_file)
+        experiment_three(train_file, dev_file, test_file)
+        end_time = time.time()
+        print(f"All experiments completed in {end_time - start_time:.2f} seconds")
         return
 
     hyperparams = {
@@ -171,7 +236,12 @@ def main(
         "dropout": 0.1
     }
 
+    hyperparams = BEST_MODEL_PARAMS.copy()
+    # to redo experiment 3 heads 8
+    hyperparams["num_heads"] = 8
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
 
     # initialize tokenizer and build vocab
     tokenizer = Tokenizer()
@@ -220,7 +290,7 @@ def main(
 
         # save model and results
         save_dir = save_model_results(
-            model, train_losses, dev_losses, hyperparams)
+            model, train_losses, dev_losses, hyperparams, folder_name=f"exp_three_results/heads_{hyperparams['num_heads']}")
 
         evaluate_model(
             model, test_loader, tokenizer, loss_fn, save_dir, device
@@ -300,7 +370,8 @@ def save_model_results(
     model: nn.Module,
     train_losses: list[float],
     dev_losses: list[float],
-    hyperparams: dict
+    hyperparams: dict,
+    folder_name: str = "results"
 ):
     # folder structure:
     # results / hyperparams as dir name / saved model, all results, plots
@@ -310,7 +381,7 @@ def save_model_results(
     model_name = "model" + \
         "_".join(f"{value}" for value in hyperparams.values())
 
-    save_dir = Path(f"results/{model_name}/")
+    save_dir = Path(f"{folder_name}/{model_name}/")
     save_dir.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), Path(f"{save_dir}/model.pt"))
 
@@ -341,6 +412,8 @@ def evaluate_model(
     loss_fn,
     save_dir: str,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    strategy: str = "greedy",
+    beam_width: int = 5
 ):
     # final evaluation on test set
     test_loss = test_epoch(
@@ -359,7 +432,8 @@ def evaluate_model(
             bos_id=tokenizer.bos_id,
             eos_id=tokenizer.eos_id,
             max_len=label_ids.size(1),
-            strategy="greedy"
+            strategy=strategy,
+            beam_width=beam_width
         )
         with open(Path(f"{save_dir}/example_outputs.txt"), 'w') as f:
             for i in range(label_ids.size(0)):
@@ -381,8 +455,6 @@ def evaluate_model(
 
         break  # only do one batch for examples
     return test_loss
-
-# TODO: grid search - model depth, model dim, attention heads, ff dim, (batch size, dropout, max_len)
 
 
 def grid_search(
@@ -477,7 +549,7 @@ def grid_search(
                             )
 
                             save_dir = save_model_results(
-                                model, train_losses, dev_losses, hyperparams)
+                                model, train_losses, dev_losses, hyperparams, folder_name="results")
 
                             test_loss = evaluate_model(
                                 model, test_loader, tokenizer, loss_fn, save_dir, device
@@ -533,14 +605,361 @@ def grid_search(
 # save models at various checkpoints too
 
 # TODO: experiment 1 - sinusoidal vs learnable positional encodings by modifying model.py
+def experiment_one(
+    train_file: str,
+    dev_file: str,
+    test_file: str,
+):
+    results = {'sinusoidal': {}, 'learnable': {}}
+    # train baseline
+    hyperparams = BEST_MODEL_PARAMS.copy()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # initialize tokenizer and build vocab
+    tokenizer = Tokenizer()
+    tokenizer.from_file(train_file)
+
+    # create datasets and dataloaders
+    train_dataset, dev_dataset, test_dataset = create_datasets(
+        train_file, dev_file, test_file, tokenizer, hyperparams[
+            "max_src_len"], hyperparams["max_tgt_len"]
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=hyperparams["batch_size"], shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=hyperparams["batch_size"])
+    test_loader = DataLoader(
+        test_dataset, batch_size=hyperparams["batch_size"])
+
+    # initialize model, loss function, optimizer
+    model = EncoderDecoder(
+        src_vocab_size=len(tokenizer.src_vocab),
+        tgt_vocab_size=len(tokenizer.tgt_vocab),
+        d_model=hyperparams["d_model"],
+        num_heads=hyperparams["num_heads"],
+        d_ff=hyperparams["d_ff"],
+        num_enc_layers=hyperparams["num_enc_layers"],
+        num_dec_layers=hyperparams["num_dec_layers"],
+        max_len=hyperparams["max_src_len"],
+        dropout=hyperparams["dropout"],
+        pad_idx=tokenizer.pad_id,
+        learnable_pos_emb=False
+    )
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"])
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
+
+    # training loop
+    # train the model
+    model, train_losses, dev_losses = train_model(
+        model, train_loader, dev_loader, optimizer, loss_fn, hyperparams["epochs"], device
+    )
+    # final evaluation on test set
+    test_loss = test_epoch(
+        model, test_loader, loss_fn, device)
+    print(f"Test Loss: {test_loss:.4f}")
+    results['sinusoidal']['test_loss'] = test_loss
+
+    # save model and results
+    save_dir = save_model_results(
+        model, train_losses, dev_losses, hyperparams, folder_name="exp_one_results/sinusoidal")
+
+    evaluate_model(
+        model, test_loader, tokenizer, loss_fn, save_dir, device
+    )
+
+    bleu_baseline = compute_bleu(
+        model, test_loader, tokenizer, device, strategy="greedy")
+
+    print(f"Number of parameters (Sinusoidal Pos Enc): {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    results['sinusoidal']['BLEU'] = bleu_baseline
+    results['sinusoidal']['param_count'] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    # train variant with learnable positional encodings
+    # initialize model, loss function, optimizer
+    model = EncoderDecoder(
+        src_vocab_size=len(tokenizer.src_vocab),
+        tgt_vocab_size=len(tokenizer.tgt_vocab),
+        d_model=hyperparams["d_model"],
+        num_heads=hyperparams["num_heads"],
+        d_ff=hyperparams["d_ff"],
+        num_enc_layers=hyperparams["num_enc_layers"],
+        num_dec_layers=hyperparams["num_dec_layers"],
+        max_len=hyperparams["max_src_len"],
+        dropout=hyperparams["dropout"],
+        pad_idx=tokenizer.pad_id,
+        learnable_pos_emb=True
+    )
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"])
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
+
+    # training loop
+    # train the model
+    model, train_losses, dev_losses = train_model(
+        model, train_loader, dev_loader, optimizer, loss_fn, hyperparams["epochs"], device
+    )
+    # final evaluation on test set
+    test_loss = test_epoch(
+        model, test_loader, loss_fn, device)
+    print(f"Test Loss: {test_loss:.4f}")
+    results['learnable']['test_loss'] = test_loss
+
+    # save model and results
+    save_dir = save_model_results(
+        model, train_losses, dev_losses, hyperparams, folder_name="exp_one_results/learnable")
+
+    evaluate_model(
+        model, test_loader, tokenizer, loss_fn, save_dir, device
+    )
+
+    bleu_learnable_pos = compute_bleu(
+        model, test_loader, tokenizer, device, strategy="greedy")
+
+    print(f"BLEU Baseline (Sinusoidal Pos Enc): {bleu_baseline:.4f}")
+    print(f"BLEU Learnable Pos Enc: {bleu_learnable_pos:.4f}")
+    results['learnable']['BLEU'] = bleu_learnable_pos
+    results['learnable']['param_count'] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f"Number of parameters (Learnable Pos Enc): {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+
+    # save results to file
+    json_save_path = Path("exp_one_results/pos_enc_comparison_results.json")
+    with open(json_save_path, 'w') as f:
+        json.dump(results, f, indent=4)
 
 # TODO: experiment 2 - different decoding strategies (greedy vs beam search) in main.py
 # only actually need to run the greedy one b/c beam takes too long
 # report BLEU score, generation time, avg seq length
 
+
+def experiment_two(
+    train_file: str,
+    dev_file: str,
+    test_file: str,
+
+):
+    results = {}
+    hyperparams = BEST_MODEL_PARAMS.copy()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # initialize tokenizer and build vocab
+    tokenizer = Tokenizer()
+    tokenizer.from_file(train_file)
+
+    # create datasets and dataloaders
+    train_dataset, dev_dataset, test_dataset = create_datasets(
+        train_file, dev_file, test_file, tokenizer, hyperparams[
+            "max_src_len"], hyperparams["max_tgt_len"]
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=hyperparams["batch_size"], shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=hyperparams["batch_size"])
+    test_loader = DataLoader(
+        test_dataset, batch_size=hyperparams["batch_size"])
+
+    # initialize model, loss function, optimizer
+    model = EncoderDecoder(
+        src_vocab_size=len(tokenizer.src_vocab),
+        tgt_vocab_size=len(tokenizer.tgt_vocab),
+        d_model=hyperparams["d_model"],
+        num_heads=hyperparams["num_heads"],
+        d_ff=hyperparams["d_ff"],
+        num_enc_layers=hyperparams["num_enc_layers"],
+        num_dec_layers=hyperparams["num_dec_layers"],
+        max_len=hyperparams["max_src_len"],
+        dropout=hyperparams["dropout"],
+        pad_idx=tokenizer.pad_id,
+        learnable_pos_emb=False
+    )
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"])
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
+
+    # training loop
+    # train the model
+    model, train_losses, dev_losses = train_model(
+        model, train_loader, dev_loader, optimizer, loss_fn, hyperparams["epochs"], device
+    )
+    # # final evaluation on test set
+    # test_loss = test_epoch(
+    #     model, test_loader, loss_fn, device)
+    # print(f"Test Loss: {test_loss:.4f}")
+
+    # save model and results
+    save_dir = save_model_results(
+        model, train_losses, dev_losses, hyperparams, folder_name="exp_two_results")
+
+    test_loss = evaluate_model(
+        model, test_loader, tokenizer, loss_fn, save_dir, device
+    )
+    print(f"Test Loss: {test_loss:.4f}")
+    results['test_loss'] = test_loss
+
+    greedy_start = time.time()
+    greedy_bleu = compute_bleu(
+        model, test_loader, tokenizer, device, strategy="greedy", save_dir=save_dir)
+    greedy_end = time.time()
+    # TODO: need to get average sequence length
+    # TODO: need to save some example outputs for both methods to compare quality
+    # needs to output source, ground truth, greedy, and beam outputs
+
+    print(f"BLEU Greedy: {greedy_bleu:.4f}")
+    print(f"Total Greedy Decoding Time: {greedy_end - greedy_start:.4f} seconds")
+    results['greedy'] = {
+        'BLEU': greedy_bleu,
+        'decoding_time': greedy_end - greedy_start
+    }
+
+    beam3_start = time.time()
+    beam3_bleu = compute_bleu(
+        model, test_loader, tokenizer, device, strategy="beam_search", beam_width=3, save_dir=save_dir)
+    beam3_end = time.time()
+
+    print(f"BLEU Beam Search (width=3): {beam3_bleu:.4f}")
+    print(f"Beam Search Decoding Time (width=3): {beam3_end - beam3_start:.4f} seconds")
+    results['beam_search_width_3'] = {
+        'BLEU': beam3_bleu,
+        'decoding_time': beam3_end - beam3_start
+    }
+
+    with open("exp_two_results/decoding_strategy_comparison_results.json", 'w') as f:
+        json.dump(results, f, indent=4)
+
 # TODO: experiment 3 - model architecture variants
 # number attention heads
 # encoder/decoder depth
+
+
+def experiment_three(
+    train_file: str,
+    dev_file: str,
+    test_file: str,
+):
+    # TODO: I've already mostly done this experiment with the grid search
+    # really just need to analyze those results and write them up
+    # could also do the residual connection & attention variants experiments, but not at all necessary
+    
+    # TODO: need to do this one to have correct BLEU scores for these
+
+    hyperparams = BEST_MODEL_PARAMS.copy()
+
+    num_heads = [2, 4, 8]
+    depths = [1, 2, 4]
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # initialize tokenizer and build vocab
+    tokenizer = Tokenizer()
+    tokenizer.from_file(train_file)
+
+    # create datasets and dataloaders
+    train_dataset, dev_dataset, test_dataset = create_datasets(
+        train_file, dev_file, test_file, tokenizer, hyperparams[
+            "max_src_len"], hyperparams["max_tgt_len"]
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=hyperparams["batch_size"], shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=hyperparams["batch_size"])
+    test_loader = DataLoader(
+        test_dataset, batch_size=hyperparams["batch_size"])
+    
+    results = []
+
+    for heads in num_heads:
+        ind_results = {}
+        hyperparams["num_heads"] = heads
+        model = EncoderDecoder(
+            src_vocab_size=len(tokenizer.src_vocab),
+            tgt_vocab_size=len(tokenizer.tgt_vocab),
+            d_model=hyperparams["d_model"],
+            num_heads=hyperparams["num_heads"],
+            d_ff=hyperparams["d_ff"],
+            num_enc_layers=hyperparams["num_enc_layers"],
+            num_dec_layers=hyperparams["num_dec_layers"],
+            max_len=hyperparams["max_src_len"],
+            dropout=hyperparams["dropout"],
+            pad_idx=tokenizer.pad_id
+        )
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"])
+        loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
+
+        model, train_losses, dev_losses = train_model(
+                model, train_loader, dev_loader, optimizer, loss_fn, hyperparams["epochs"], device
+            )
+        
+        # save model and results
+        save_dir = save_model_results(
+            model, train_losses, dev_losses, hyperparams, folder_name=f"exp_three_results/heads_{heads}")
+
+        test_loss = evaluate_model(
+            model, test_loader, tokenizer, loss_fn, save_dir, device
+        )
+        print(f"Test Loss (Heads={heads}): {test_loss:.4f}")
+
+        # compute BLEU score on test set
+        bleu_score = compute_bleu(
+            model, test_loader, tokenizer, device, strategy="greedy")
+        print(f"Test BLEU Score: {bleu_score:.4f}")
+
+        ind_results['num_heads'] = heads
+        ind_results['test_loss'] = test_loss
+        ind_results['bleu_score'] = bleu_score
+        results.append(ind_results)
+
+
+    with open("exp_three_results/num_heads_experiment_results.json", 'w') as f:
+        results.append(hyperparams)
+        json.dump(results, f, indent=4)
+
+    results = []
+    for depth in depths:
+        ind_results = {}
+        hyperparams["num_enc_layers"] = depth
+        hyperparams["num_dec_layers"] = depth
+        model = EncoderDecoder(
+            src_vocab_size=len(tokenizer.src_vocab),
+            tgt_vocab_size=len(tokenizer.tgt_vocab),
+            d_model=hyperparams["d_model"],
+            num_heads=hyperparams["num_heads"],
+            d_ff=hyperparams["d_ff"],
+            num_enc_layers=hyperparams["num_enc_layers"],
+            num_dec_layers=hyperparams["num_dec_layers"],
+            max_len=hyperparams["max_src_len"],
+            dropout=hyperparams["dropout"],
+            pad_idx=tokenizer.pad_id
+        )
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"])
+        loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
+
+        model, train_losses, dev_losses = train_model(
+                model, train_loader, dev_loader, optimizer, loss_fn, hyperparams["epochs"], device
+            )
+        
+        # save model and results
+        save_dir = save_model_results(
+            model, train_losses, dev_losses, hyperparams, folder_name=f"exp_three_results/depth_{depth}")
+
+        test_loss = evaluate_model(
+            model, test_loader, tokenizer, loss_fn, save_dir, device
+        )
+        print(f"Test Loss (Depth={depth}): {test_loss:.4f}")
+
+        # compute BLEU score on test set
+        bleu_score = compute_bleu(
+            model, test_loader, tokenizer, device, strategy="greedy")
+        print(f"Test BLEU Score: {bleu_score:.4f}")
+
+        ind_results['depth'] = depth
+        ind_results['test_loss'] = test_loss
+        ind_results['bleu_score'] = bleu_score
+        results.append(ind_results)
+
+    with open("exp_three_results/depth_experiment_results.json", 'w') as f:
+        results.append(hyperparams)
+        json.dump(results, f, indent=4)    
+
 
 if __name__ == "__main__":
     main()

@@ -91,6 +91,22 @@ class PosEncoding(nn.Module):
         return x_new
 
 
+class LearnablePosEncoding(nn.Module):
+    """Learnable positional encoding module"""
+    
+    def __init__(self, d_model: int, seq_len: int):
+        super().__init__()
+        assert d_model % 2 == 0, "The embedding size must be divisible by 2"
+        self.pos_emb = nn.Embedding(seq_len, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        seq_len = x.size(1)
+        positions = torch.arange(seq_len, device=x.device).unsqueeze(0).expand_as(x[:, :, 0])
+        pos_embeddings = self.pos_emb(positions)
+        x_new = x + pos_embeddings
+        return x_new
+
+
 class MHA(nn.Module):
     """Multihead attention"""
     def __init__(self, d_model: int, num_heads: int, dropout: float = 0.1):
@@ -190,10 +206,14 @@ class Encoder(nn.Module):
         max_len: int,
         pad_idx: int,
         dropout=0.1,
+        learnable_pos_emb: bool = False
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        if learnable_pos_emb:
+            self.pos_emb = LearnablePosEncoding(d_model, max_len)
+        else:
+            self.pos_emb = PosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -251,10 +271,14 @@ class Decoder(nn.Module):
         max_len: int,
         dropout: float =0.1,
         pad_idx: int =0,
+        learnable_pos_emb: bool = False
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        if learnable_pos_emb:
+            self.pos_emb = LearnablePosEncoding(d_model, max_len)
+        else:
+            self.pos_emb = PosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -294,6 +318,7 @@ class EncoderDecoder(nn.Module):
         max_len: int = 50,
         dropout: float = 0.1,
         pad_idx: int = 0,
+        learnable_pos_emb: bool = False
     ):
         super().__init__()
         self.encoder = Encoder(
@@ -305,6 +330,7 @@ class EncoderDecoder(nn.Module):
             max_len=max_len,
             dropout=dropout,
             pad_idx=pad_idx,
+            learnable_pos_emb=learnable_pos_emb
         )
         self.decoder = Decoder(
             vocab_size=tgt_vocab_size,
@@ -315,6 +341,7 @@ class EncoderDecoder(nn.Module):
             max_len=max_len,
             dropout=dropout,
             pad_idx=pad_idx,
+            learnable_pos_emb=learnable_pos_emb
         )
         self.out_proj = nn.Linear(d_model, tgt_vocab_size)
 
