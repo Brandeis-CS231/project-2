@@ -17,3 +17,5 @@ wheels/
 sftp-config.json
 
 data/
+# ignore grid search results for now
+results/
